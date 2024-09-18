@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイマーアプリ</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: black;
+            color: yellow;
+            font-family: 'Arial', sans-serif;
+            transition: background-color 0.5s;
+        }
+
+        #timer {
+            font-size: 12rem;
+            margin: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        .controls button {
+            background-color: yellow;
+            color: black;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        .icon-button {
+            font-size: 2rem;
+        }
+
+        input[type="number"] {
+            background-color: yellow;
+            border: none;
+            border-radius: 5px;
+            width: 70px;
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .btn-section {
+            position: absolute;
+            bottom: 50px;
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        #history {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: black;
+            color: limegreen;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        #history ul {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #history li {
+            display: flex;
+            align-items: center;
+        }
+
+        #history input[type="text"] {
+            background-color: limegreen;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            width: 100px;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        #history li:hover {
+            background-color: black;
+            color: limegreen;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            #timer {
+                font-size: 8rem;
+            }
+
+            .controls, .btn-section {
+                flex-direction: column;
+            }
+        }
+
+        @media (min-width: 769px) {
+            #timer {
+                font-size: 12rem;
+            }
+
+            .controls, .btn-section {
+                flex-direction: row;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="history" class="hidden">
+        <ul>
+            <li>
+                <input type="radio" name="history" class="history-radio" value="00:05:00">
+                <input class="history-input" type="text" value="00:05:00">
+            </li>
+            <li>
+                <input type="radio" name="history" class="history-radio" value="00:10:00">
+                <input class="history-input" type="text" value="00:10:00">
+            </li>
+            <li>
+                <input type="radio" name="history" class="history-radio" value="00:15:00">
+                <input class="history-input" type="text" value="00:15:00">
+            </li>
+        </ul>
+    </div>
+
+    <div class="controls">
+        <button id="toggleMode" class="icon-button">⏰ カウントアップ</button>
+
+        <div id="countdownInputWrapper" class="hidden">
+            <input id="hours" type="number" placeholder="時" min="0">
+            <input id="minutes" type="number" placeholder="分" min="0" max="59">
+            <input id="seconds" type="number" placeholder="秒" min="0" max="59">
+        </div>
+    </div>
+
+    <div id="timer">00:00:00</div>
+
+    <div class="btn-section">
+        <button id="start" class="icon-button">▶️ スタート</button>
+        <button id="pause" class="icon-button">⏸️ 一時停止</button>
+        <button id="reset" class="icon-button">🔄 リセット</button>
+    </div>
+
+    <script>
+        let isCountdown = false;
+        let time = 0;
+        let timerInterval;
+        let isRunning = false;
+
+        const timerDisplay = document.getElementById('timer');
+        const toggleModeBtn = document.getElementById('toggleMode');
+        const countdownInputWrapper = document.getElementById('countdownInputWrapper');
+        const startBtn = document.getElementById('start');
+        const pauseBtn = document.getElementById('pause');
+        const resetBtn = document.getElementById('reset');
+        const hoursInput = document.getElementById('hours');
+        const minutesInput = document.getElementById('minutes');
+        const secondsInput = document.getElementById('seconds');
+        const historyDiv = document.getElementById('history');
+        const historyRadios = document.querySelectorAll('.history-radio');
+        const historyInputs = document.querySelectorAll('.history-input');
+
+        function updateTimerDisplay(seconds) {
+            const hours = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const secs = String(seconds % 60).padStart(2, '0');
+            timerDisplay.textContent = `${hours}:${minutes}:${secs}`;
+        }
+
+        toggleModeBtn.addEventListener('click', () => {
+            isCountdown = !isCountdown;
+            toggleModeBtn.textContent = isCountdown ? '⏲️ カウントダウン' : '⏰ カウントアップ';
+            countdownInputWrapper.classList.toggle('hidden', !isCountdown);
+            historyDiv.classList.toggle('hidden', !isCountdown); // カウントダウン時のみ履歴表示
+            resetTimer();
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (isRunning) return;
+            isRunning = true;
+
+            let countdownSeconds = 0;
+            if (isCountdown) {
+                const hours = parseInt(hoursInput.value) || 0;
+                const minutes = parseInt(minutesInput.value) || 0;
+                const seconds = parseInt(secondsInput.value) || 0;
+                countdownSeconds = hours * 3600 + minutes * 60 + seconds;
+                time = countdownSeconds;
+            }
+
+            timerInterval = setInterval(() => {
+                if (isCountdown) {
+                    time--;
+                    if (time <= 0) {
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        flashScreen(); // カウントダウン終了時にフラッシュ
+                    }
+                } else {
+                    time++;
+                }
+                updateTimerDisplay(time);
+            }, 1000);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            isRunning = false;
+        });
+
+        resetBtn.addEventListener('click', () => {
+            resetTimer();
+        });
+
+        historyRadios.forEach((radio, index) => {
+            radio.addEventListener('change', (e) => {
+                const timeString = historyInputs[index].value.split(':');
+                hoursInput.value = timeString[0];
+                minutesInput.value = timeString[1];
+                secondsInput.value = timeString[2];
+            });
+        });
+
+        historyInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                historyRadios[index].value = e.target.value; // 編集内容をラジオボタンの値に反映
+            });
+        });
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            time = 0;
+            updateTimerDisplay(0);
+        }
+
+        function flashScreen() {
+            let flashCount = 0;
+            const flashInterval = setInterval(() => {
+                document.body.style.backgroundColor = flashCount % 2 === 0 ? 'yellow' : 'black';
+                flashCount++;
+                if (flashCount >= 6) {
+                    clearInterval(flashInterval);
+                    document.body.style.backgroundColor = 'black'; // 元に戻す
+                }
+            }, 500); // 0.5秒ごとに切り替え
+        }
+    </script>
+</body>
+</html>
